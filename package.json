@@ -35,6 +35,10 @@
     "neural-network", "mlp", "machine-learning", "wlearn", "polygrad"
   ],
   "author": "Anton Zemlyansky",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wlearn-org/nn.git"
+  },
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
