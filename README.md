@@ -1,6 +1,6 @@
 # @wlearn/nn
 
-Neural tabular models for wlearn, powered by [polygrad](https://github.com/polygrad/polygrad).
+Neural tabular models for [wlearn](https://wlearn.org) ([GitHub](https://github.com/wlearn-org), [all packages](https://github.com/wlearn-org/wlearn#repository-structure)), powered by [polygrad](https://github.com/polygrad/polygrad).
 
 ## Models
 
