@@ -4,9 +4,11 @@ Neural tabular models for wlearn, powered by [polygrad](https://github.com/polyg
 
 ## Models
 
-- **MLPClassifier / MLPRegressor** -- Multi-layer perceptron with configurable hidden sizes, activations (relu, gelu, silu), optimizers (SGD, Adam), mini-batch training, and early stopping.
-- **TabMClassifier / TabMRegressor** -- Parameter-efficient MLP ensembling via BatchEnsemble adapters. One model produces k implicit predictions with rank-1 weight perturbations. ICLR 2025.
-- **NAMClassifier / NAMRegressor** -- Neural Additive Models. One small MLP per feature, summed for interpretable per-feature shape functions. Supports ExU activation. NeurIPS 2021.
+- **MLPModel** -- Multi-layer perceptron with configurable hidden sizes, activations (relu, gelu, silu), optimizers (SGD, Adam), mini-batch training, and early stopping.
+- **TabMModel** -- Parameter-efficient MLP ensembling via BatchEnsemble adapters. One model produces k implicit predictions with rank-1 weight perturbations. ICLR 2025.
+- **NAMModel** -- Neural Additive Models. One small MLP per feature, summed for interpretable per-feature shape functions. Supports ExU activation. NeurIPS 2021.
+
+All unified classes accept `task: 'classification'` or `task: 'regression'` and auto-detect from labels if omitted. Split classes (`MLPClassifier`, `MLPRegressor`, etc.) are also exported for backward compatibility.
 
 ## Installation
 
@@ -23,9 +25,10 @@ npm install polygrad
 ## Usage
 
 ```js
-const { TabMClassifier } = require('@wlearn/nn')
+const { TabMModel } = require('@wlearn/nn')
 
-const model = await TabMClassifier.create({
+const model = await TabMModel.create({
+  task: 'classification',  // or 'regression'; auto-detected from labels if omitted
   hidden_sizes: [128],
   activation: 'relu',
   n_ensemble: 32,

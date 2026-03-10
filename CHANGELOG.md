@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0] - 2026-03-10
+
+### Added
+
+- Unified model classes: `MLPModel`, `TabMModel`, `NAMModel` via `createModelClass`
+- Unified classes accept `task` parameter and auto-detect from labels
+- Original split classes (`MLPClassifier`, `MLPRegressor`, etc.) still exported for backward compatibility
+
 ## [0.1.0] - 2026-03-08
 
 ### Added
