@@ -16,10 +16,10 @@ All unified classes accept `task: 'classification'` or `task: 'regression'` and 
 npm install @wlearn/nn
 ```
 
-Requires `polygrad` as a peer dependency:
+Requires `polygrad >= 0.3.0` as a peer dependency:
 
 ```
-npm install polygrad
+npm install polygrad@^0.3.0
 ```
 
 ## Usage
@@ -64,7 +64,7 @@ All models follow the wlearn estimator contract:
 npm test
 ```
 
-69 tests: MLP (32), TabM (18), NAM (19).
+70 tests: MLP (33), TabM (18), NAM (19).
 
 ## References
 

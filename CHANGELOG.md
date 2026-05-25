@@ -2,6 +2,13 @@
 
 ## [0.2.0] - 2026-03-10
 
+### Fixed
+
+- Use the public `polygrad` runtime API instead of package-internal subpaths
+- Keep `polygrad` runtime options out of saved model params and bundles
+- Depend on the CommonJS `@wlearn/core` release
+- Add package homepage and GitHub issue metadata
+
 ### Added
 
 - Unified model classes: `MLPModel`, `TabMModel`, `NAMModel` via `createModelClass`

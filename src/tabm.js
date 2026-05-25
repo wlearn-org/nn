@@ -14,19 +14,7 @@ const {
   DisposedError, NotFittedError
 } = require('@wlearn/core')
 
-let _Instance = null
-let _OPTIM_SGD = null
-let _OPTIM_ADAM = null
-
-function getPolygrad() {
-  if (!_Instance) {
-    const pg = require('polygrad/src/instance')
-    _Instance = pg.Instance
-    _OPTIM_SGD = pg.OPTIM_SGD
-    _OPTIM_ADAM = pg.OPTIM_ADAM
-  }
-  return { Instance: _Instance, OPTIM_SGD: _OPTIM_SGD, OPTIM_ADAM: _OPTIM_ADAM }
-}
+const { loadPolygrad, getPolygradParts, splitPolygradParam } = require('./polygrad.js')
 
 function softmax(logits) {
   const max = Math.max(...logits)
@@ -68,15 +56,17 @@ class TabMClassifier {
   #batchSize = 1
   #fitted = false
   #disposed = false
+  #polygrad = null
 
-  constructor(instanceOrSentinel, params, nrClass, classes, nFeatures, batchSize) {
+  constructor(instanceOrSentinel, params, nrClass, classes, nFeatures, batchSize, polygradRuntime = null) {
+    this.#polygrad = polygradRuntime
     if (instanceOrSentinel === _UNFITTED) {
       this.#instance = null
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#fitted = false
     } else {
       this.#instance = instanceOrSentinel
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#nrClass = nrClass || 0
       this.#classes = classes ? [...classes] : []
       this.#nFeatures = nFeatures || 0
@@ -86,13 +76,15 @@ class TabMClassifier {
   }
 
   static async create(params = {}) {
-    return new TabMClassifier(_UNFITTED, params)
+    const { polygradOptions, modelParams } = splitPolygradParam(params)
+    const polygradRuntime = await loadPolygrad(polygradOptions)
+    return new TabMClassifier(_UNFITTED, modelParams, 0, null, 0, 1, polygradRuntime)
   }
 
   fit(X, y) {
     if (this.#disposed) throw new DisposedError('TabMClassifier has been disposed.')
 
-    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygrad()
+    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygradParts(this.#polygrad)
 
     const { rows, cols, data } = this.#normalizeX(X)
     const nFeatures = cols
@@ -304,11 +296,12 @@ class TabMClassifier {
 
   static async load(bytes) {
     const { manifest, toc, blobs } = decodeBundle(bytes)
-    return TabMClassifier._fromBundle(manifest, toc, blobs)
+    const polygradRuntime = await loadPolygrad()
+    return TabMClassifier._fromBundle(manifest, toc, blobs, polygradRuntime)
   }
 
-  static _fromBundle(manifest, toc, blobs) {
-    const { Instance } = getPolygrad()
+  static _fromBundle(manifest, toc, blobs, polygradRuntime) {
+    const { Instance } = getPolygradParts(polygradRuntime)
 
     const irEntry = toc.find(e => e.id === 'ir')
     const wEntry = toc.find(e => e.id === 'weights')
@@ -326,7 +319,8 @@ class TabMClassifier {
       meta.nrClass || 0,
       meta.classes,
       meta.nFeatures || 0,
-      meta.batchSize || 1
+      meta.batchSize || 1,
+      polygradRuntime
     )
   }
 
@@ -345,7 +339,7 @@ class TabMClassifier {
   }
 
   setParams(p) {
-    Object.assign(this.#params, p)
+    Object.assign(this.#params, splitPolygradParam(p).modelParams)
     return this
   }
 
@@ -418,15 +412,17 @@ class TabMRegressor {
   #batchSize = 1
   #fitted = false
   #disposed = false
+  #polygrad = null
 
-  constructor(instanceOrSentinel, params, nFeatures, batchSize) {
+  constructor(instanceOrSentinel, params, nFeatures, batchSize, polygradRuntime = null) {
+    this.#polygrad = polygradRuntime
     if (instanceOrSentinel === _UNFITTED) {
       this.#instance = null
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#fitted = false
     } else {
       this.#instance = instanceOrSentinel
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#nFeatures = nFeatures || 0
       this.#batchSize = batchSize || 1
       this.#fitted = true
@@ -434,13 +430,15 @@ class TabMRegressor {
   }
 
   static async create(params = {}) {
-    return new TabMRegressor(_UNFITTED, params)
+    const { polygradOptions, modelParams } = splitPolygradParam(params)
+    const polygradRuntime = await loadPolygrad(polygradOptions)
+    return new TabMRegressor(_UNFITTED, modelParams, 0, 1, polygradRuntime)
   }
 
   fit(X, y) {
     if (this.#disposed) throw new DisposedError('TabMRegressor has been disposed.')
 
-    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygrad()
+    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygradParts(this.#polygrad)
 
     const { rows, cols, data } = this.#normalizeX(X)
     const nFeatures = cols
@@ -622,11 +620,12 @@ class TabMRegressor {
 
   static async load(bytes) {
     const { manifest, toc, blobs } = decodeBundle(bytes)
-    return TabMRegressor._fromBundle(manifest, toc, blobs)
+    const polygradRuntime = await loadPolygrad()
+    return TabMRegressor._fromBundle(manifest, toc, blobs, polygradRuntime)
   }
 
-  static _fromBundle(manifest, toc, blobs) {
-    const { Instance } = getPolygrad()
+  static _fromBundle(manifest, toc, blobs, polygradRuntime) {
+    const { Instance } = getPolygradParts(polygradRuntime)
 
     const irEntry = toc.find(e => e.id === 'ir')
     const wEntry = toc.find(e => e.id === 'weights')
@@ -642,7 +641,8 @@ class TabMRegressor {
     return new TabMRegressor(
       instance, params,
       meta.nFeatures || 0,
-      meta.batchSize || 1
+      meta.batchSize || 1,
+      polygradRuntime
     )
   }
 
@@ -661,7 +661,7 @@ class TabMRegressor {
   }
 
   setParams(p) {
-    Object.assign(this.#params, p)
+    Object.assign(this.#params, splitPolygradParam(p).modelParams)
     return this
   }
 
@@ -719,7 +719,7 @@ class TabMRegressor {
 
 // ─── Register loaders ─────────────────────────────────────────────────
 
-register('wlearn.nn.tabm.classifier@1', (m, t, b) => TabMClassifier._fromBundle(m, t, b))
-register('wlearn.nn.tabm.regressor@1', (m, t, b) => TabMRegressor._fromBundle(m, t, b))
+register('wlearn.nn.tabm.classifier@1', async (m, t, b) => TabMClassifier._fromBundle(m, t, b, await loadPolygrad()))
+register('wlearn.nn.tabm.regressor@1', async (m, t, b) => TabMRegressor._fromBundle(m, t, b, await loadPolygrad()))
 
 module.exports = { TabMClassifier, TabMRegressor }

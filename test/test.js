@@ -242,6 +242,20 @@ await test('getParams / setParams', async () => {
   model.dispose()
 })
 
+await test('polygrad runtime option is not serialized', async () => {
+  const { X, y } = makeBinaryData(42, 12)
+  const model = await MLPClassifier.create({
+    hidden_sizes: [4], epochs: 5, lr: 0.01,
+    optimizer: 'sgd', seed: 42,
+    polygrad: { core: 'wasm' }
+  })
+  assert(model.getParams().polygrad === undefined, 'polygrad option should not be a model param')
+  model.fit(X, y)
+  const { manifest } = decodeBundle(model.save())
+  assert(!Object.prototype.hasOwnProperty.call(manifest.params, 'polygrad'), 'polygrad option should not be serialized')
+  model.dispose()
+})
+
 await test('defaultSearchSpace', async () => {
   const space = MLPClassifier.defaultSearchSpace()
   assert(space, 'search space should exist')

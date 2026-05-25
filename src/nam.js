@@ -14,19 +14,7 @@ const {
   DisposedError, NotFittedError
 } = require('@wlearn/core')
 
-let _Instance = null
-let _OPTIM_SGD = null
-let _OPTIM_ADAM = null
-
-function getPolygrad() {
-  if (!_Instance) {
-    const pg = require('polygrad/src/instance')
-    _Instance = pg.Instance
-    _OPTIM_SGD = pg.OPTIM_SGD
-    _OPTIM_ADAM = pg.OPTIM_ADAM
-  }
-  return { Instance: _Instance, OPTIM_SGD: _OPTIM_SGD, OPTIM_ADAM: _OPTIM_ADAM }
-}
+const { loadPolygrad, getPolygradParts, splitPolygradParam } = require('./polygrad.js')
 
 function softmax(logits) {
   const max = Math.max(...logits)
@@ -68,15 +56,17 @@ class NAMClassifier {
   #batchSize = 1
   #fitted = false
   #disposed = false
+  #polygrad = null
 
-  constructor(instanceOrSentinel, params, nrClass, classes, nFeatures, batchSize) {
+  constructor(instanceOrSentinel, params, nrClass, classes, nFeatures, batchSize, polygradRuntime = null) {
+    this.#polygrad = polygradRuntime
     if (instanceOrSentinel === _UNFITTED) {
       this.#instance = null
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#fitted = false
     } else {
       this.#instance = instanceOrSentinel
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#nrClass = nrClass || 0
       this.#classes = classes ? [...classes] : []
       this.#nFeatures = nFeatures || 0
@@ -86,13 +76,15 @@ class NAMClassifier {
   }
 
   static async create(params = {}) {
-    return new NAMClassifier(_UNFITTED, params)
+    const { polygradOptions, modelParams } = splitPolygradParam(params)
+    const polygradRuntime = await loadPolygrad(polygradOptions)
+    return new NAMClassifier(_UNFITTED, modelParams, 0, null, 0, 1, polygradRuntime)
   }
 
   fit(X, y) {
     if (this.#disposed) throw new DisposedError('NAMClassifier has been disposed.')
 
-    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygrad()
+    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygradParts(this.#polygrad)
 
     const { rows, cols, data } = this.#normalizeX(X)
     const nFeatures = cols
@@ -306,11 +298,12 @@ class NAMClassifier {
 
   static async load(bytes) {
     const { manifest, toc, blobs } = decodeBundle(bytes)
-    return NAMClassifier._fromBundle(manifest, toc, blobs)
+    const polygradRuntime = await loadPolygrad()
+    return NAMClassifier._fromBundle(manifest, toc, blobs, polygradRuntime)
   }
 
-  static _fromBundle(manifest, toc, blobs) {
-    const { Instance } = getPolygrad()
+  static _fromBundle(manifest, toc, blobs, polygradRuntime) {
+    const { Instance } = getPolygradParts(polygradRuntime)
 
     const irEntry = toc.find(e => e.id === 'ir')
     const wEntry = toc.find(e => e.id === 'weights')
@@ -328,7 +321,8 @@ class NAMClassifier {
       meta.nrClass || 0,
       meta.classes,
       meta.nFeatures || 0,
-      meta.batchSize || 1
+      meta.batchSize || 1,
+      polygradRuntime
     )
   }
 
@@ -347,7 +341,7 @@ class NAMClassifier {
   }
 
   setParams(p) {
-    Object.assign(this.#params, p)
+    Object.assign(this.#params, splitPolygradParam(p).modelParams)
     return this
   }
 
@@ -419,15 +413,17 @@ class NAMRegressor {
   #batchSize = 1
   #fitted = false
   #disposed = false
+  #polygrad = null
 
-  constructor(instanceOrSentinel, params, nFeatures, batchSize) {
+  constructor(instanceOrSentinel, params, nFeatures, batchSize, polygradRuntime = null) {
+    this.#polygrad = polygradRuntime
     if (instanceOrSentinel === _UNFITTED) {
       this.#instance = null
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#fitted = false
     } else {
       this.#instance = instanceOrSentinel
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#nFeatures = nFeatures || 0
       this.#batchSize = batchSize || 1
       this.#fitted = true
@@ -435,13 +431,15 @@ class NAMRegressor {
   }
 
   static async create(params = {}) {
-    return new NAMRegressor(_UNFITTED, params)
+    const { polygradOptions, modelParams } = splitPolygradParam(params)
+    const polygradRuntime = await loadPolygrad(polygradOptions)
+    return new NAMRegressor(_UNFITTED, modelParams, 0, 1, polygradRuntime)
   }
 
   fit(X, y) {
     if (this.#disposed) throw new DisposedError('NAMRegressor has been disposed.')
 
-    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygrad()
+    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygradParts(this.#polygrad)
 
     const { rows, cols, data } = this.#normalizeX(X)
     const nFeatures = cols
@@ -625,11 +623,12 @@ class NAMRegressor {
 
   static async load(bytes) {
     const { manifest, toc, blobs } = decodeBundle(bytes)
-    return NAMRegressor._fromBundle(manifest, toc, blobs)
+    const polygradRuntime = await loadPolygrad()
+    return NAMRegressor._fromBundle(manifest, toc, blobs, polygradRuntime)
   }
 
-  static _fromBundle(manifest, toc, blobs) {
-    const { Instance } = getPolygrad()
+  static _fromBundle(manifest, toc, blobs, polygradRuntime) {
+    const { Instance } = getPolygradParts(polygradRuntime)
 
     const irEntry = toc.find(e => e.id === 'ir')
     const wEntry = toc.find(e => e.id === 'weights')
@@ -645,7 +644,8 @@ class NAMRegressor {
     return new NAMRegressor(
       instance, params,
       meta.nFeatures || 0,
-      meta.batchSize || 1
+      meta.batchSize || 1,
+      polygradRuntime
     )
   }
 
@@ -664,7 +664,7 @@ class NAMRegressor {
   }
 
   setParams(p) {
-    Object.assign(this.#params, p)
+    Object.assign(this.#params, splitPolygradParam(p).modelParams)
     return this
   }
 
@@ -721,7 +721,7 @@ class NAMRegressor {
 
 // ─── Register loaders ─────────────────────────────────────────────────
 
-register('wlearn.nn.nam.classifier@1', (m, t, b) => NAMClassifier._fromBundle(m, t, b))
-register('wlearn.nn.nam.regressor@1', (m, t, b) => NAMRegressor._fromBundle(m, t, b))
+register('wlearn.nn.nam.classifier@1', async (m, t, b) => NAMClassifier._fromBundle(m, t, b, await loadPolygrad()))
+register('wlearn.nn.nam.regressor@1', async (m, t, b) => NAMRegressor._fromBundle(m, t, b, await loadPolygrad()))
 
 module.exports = { NAMClassifier, NAMRegressor }

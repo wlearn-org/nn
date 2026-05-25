@@ -11,19 +11,7 @@ const {
   DisposedError, NotFittedError
 } = require('@wlearn/core')
 
-let _Instance = null
-let _OPTIM_SGD = null
-let _OPTIM_ADAM = null
-
-function getPolygrad() {
-  if (!_Instance) {
-    const pg = require('polygrad/src/instance')
-    _Instance = pg.Instance
-    _OPTIM_SGD = pg.OPTIM_SGD
-    _OPTIM_ADAM = pg.OPTIM_ADAM
-  }
-  return { Instance: _Instance, OPTIM_SGD: _OPTIM_SGD, OPTIM_ADAM: _OPTIM_ADAM }
-}
+const { loadPolygrad, getPolygradParts, splitPolygradParam } = require('./polygrad.js')
 
 function softmax(logits) {
   const max = Math.max(...logits)
@@ -67,15 +55,17 @@ class MLPClassifier {
   #batchSize = 1
   #fitted = false
   #disposed = false
+  #polygrad = null
 
-  constructor(instanceOrSentinel, params, nrClass, classes, nFeatures, batchSize) {
+  constructor(instanceOrSentinel, params, nrClass, classes, nFeatures, batchSize, polygradRuntime = null) {
+    this.#polygrad = polygradRuntime
     if (instanceOrSentinel === _UNFITTED) {
       this.#instance = null
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#fitted = false
     } else {
       this.#instance = instanceOrSentinel
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#nrClass = nrClass || 0
       this.#classes = classes ? [...classes] : []
       this.#nFeatures = nFeatures || 0
@@ -85,13 +75,15 @@ class MLPClassifier {
   }
 
   static async create(params = {}) {
-    return new MLPClassifier(_UNFITTED, params)
+    const { polygradOptions, modelParams } = splitPolygradParam(params)
+    const polygradRuntime = await loadPolygrad(polygradOptions)
+    return new MLPClassifier(_UNFITTED, modelParams, 0, null, 0, 1, polygradRuntime)
   }
 
   fit(X, y) {
     if (this.#disposed) throw new DisposedError('MLPClassifier has been disposed.')
 
-    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygrad()
+    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygradParts(this.#polygrad)
 
     // Normalize X to flat Float32Array rows
     const { rows, cols, data } = this.#normalizeX(X)
@@ -310,11 +302,12 @@ class MLPClassifier {
 
   static async load(bytes) {
     const { manifest, toc, blobs } = decodeBundle(bytes)
-    return MLPClassifier._fromBundle(manifest, toc, blobs)
+    const polygradRuntime = await loadPolygrad()
+    return MLPClassifier._fromBundle(manifest, toc, blobs, polygradRuntime)
   }
 
-  static _fromBundle(manifest, toc, blobs) {
-    const { Instance } = getPolygrad()
+  static _fromBundle(manifest, toc, blobs, polygradRuntime) {
+    const { Instance } = getPolygradParts(polygradRuntime)
 
     const irEntry = toc.find(e => e.id === 'ir')
     const wEntry = toc.find(e => e.id === 'weights')
@@ -332,7 +325,8 @@ class MLPClassifier {
       meta.nrClass || 0,
       meta.classes,
       meta.nFeatures || 0,
-      meta.batchSize || 1
+      meta.batchSize || 1,
+      polygradRuntime
     )
   }
 
@@ -351,7 +345,7 @@ class MLPClassifier {
   }
 
   setParams(p) {
-    Object.assign(this.#params, p)
+    Object.assign(this.#params, splitPolygradParam(p).modelParams)
     return this
   }
 
@@ -424,15 +418,17 @@ class MLPRegressor {
   #batchSize = 1
   #fitted = false
   #disposed = false
+  #polygrad = null
 
-  constructor(instanceOrSentinel, params, nFeatures, batchSize) {
+  constructor(instanceOrSentinel, params, nFeatures, batchSize, polygradRuntime = null) {
+    this.#polygrad = polygradRuntime
     if (instanceOrSentinel === _UNFITTED) {
       this.#instance = null
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#fitted = false
     } else {
       this.#instance = instanceOrSentinel
-      this.#params = { ...params }
+      this.#params = splitPolygradParam(params).modelParams
       this.#nFeatures = nFeatures || 0
       this.#batchSize = batchSize || 1
       this.#fitted = true
@@ -440,13 +436,15 @@ class MLPRegressor {
   }
 
   static async create(params = {}) {
-    return new MLPRegressor(_UNFITTED, params)
+    const { polygradOptions, modelParams } = splitPolygradParam(params)
+    const polygradRuntime = await loadPolygrad(polygradOptions)
+    return new MLPRegressor(_UNFITTED, modelParams, 0, 1, polygradRuntime)
   }
 
   fit(X, y) {
     if (this.#disposed) throw new DisposedError('MLPRegressor has been disposed.')
 
-    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygrad()
+    const { Instance, OPTIM_SGD, OPTIM_ADAM } = getPolygradParts(this.#polygrad)
 
     const { rows, cols, data } = this.#normalizeX(X)
     const nFeatures = cols
@@ -638,11 +636,12 @@ class MLPRegressor {
 
   static async load(bytes) {
     const { manifest, toc, blobs } = decodeBundle(bytes)
-    return MLPRegressor._fromBundle(manifest, toc, blobs)
+    const polygradRuntime = await loadPolygrad()
+    return MLPRegressor._fromBundle(manifest, toc, blobs, polygradRuntime)
   }
 
-  static _fromBundle(manifest, toc, blobs) {
-    const { Instance } = getPolygrad()
+  static _fromBundle(manifest, toc, blobs, polygradRuntime) {
+    const { Instance } = getPolygradParts(polygradRuntime)
 
     const irEntry = toc.find(e => e.id === 'ir')
     const wEntry = toc.find(e => e.id === 'weights')
@@ -658,7 +657,8 @@ class MLPRegressor {
     return new MLPRegressor(
       instance, params,
       meta.nFeatures || 0,
-      meta.batchSize || 1
+      meta.batchSize || 1,
+      polygradRuntime
     )
   }
 
@@ -677,7 +677,7 @@ class MLPRegressor {
   }
 
   setParams(p) {
-    Object.assign(this.#params, p)
+    Object.assign(this.#params, splitPolygradParam(p).modelParams)
     return this
   }
 
@@ -735,7 +735,7 @@ class MLPRegressor {
 
 // ─── Register loaders ──────────────────────────────────────────────────
 
-register('wlearn.nn.mlp.classifier@1', (m, t, b) => MLPClassifier._fromBundle(m, t, b))
-register('wlearn.nn.mlp.regressor@1', (m, t, b) => MLPRegressor._fromBundle(m, t, b))
+register('wlearn.nn.mlp.classifier@1', async (m, t, b) => MLPClassifier._fromBundle(m, t, b, await loadPolygrad()))
+register('wlearn.nn.mlp.regressor@1', async (m, t, b) => MLPRegressor._fromBundle(m, t, b, await loadPolygrad()))
 
 module.exports = { MLPClassifier, MLPRegressor }
