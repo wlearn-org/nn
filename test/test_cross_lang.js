@@ -41,7 +41,7 @@ function makeRegressionData(n = 30) {
 
 async function main() {
 
-const fixturesDir = join(__dirname, '..', '..', '..', 'fixtures', 'nn')
+const fixturesDir = process.env.WLEARN_NN_FIXTURES || join(__dirname, '..', '..', 'wlearn', 'fixtures', 'nn')
 mkdirSync(fixturesDir, { recursive: true })
 
 // Classifier
@@ -57,7 +57,7 @@ const clfBundle = clf.save()
 
 writeFileSync(join(fixturesDir, 'mlp_classifier.wlrn'), clfBundle)
 writeFileSync(join(fixturesDir, 'mlp_classifier.json'), JSON.stringify({
-  typeId: 'wlearn.nn.mlp.classifier@1',
+  typeId: 'wlearn.nn.mlp.classifier@2',
   X: cX,
   predictions: [...clfPreds],
   probabilities: [...clfProba],
@@ -81,7 +81,7 @@ const regBundle = reg.save()
 
 writeFileSync(join(fixturesDir, 'mlp_regressor.wlrn'), regBundle)
 writeFileSync(join(fixturesDir, 'mlp_regressor.json'), JSON.stringify({
-  typeId: 'wlearn.nn.mlp.regressor@1',
+  typeId: 'wlearn.nn.mlp.regressor@2',
   X: rX,
   predictions: [...regPreds],
   score: reg.score(rX, rY)

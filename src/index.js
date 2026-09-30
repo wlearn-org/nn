@@ -10,7 +10,7 @@ const NAMModel = createModelClass(NAMClassifier, NAMRegressor, { name: 'NAMModel
 module.exports = {
   // Unified classes (recommended)
   MLPModel, TabMModel, NAMModel,
-  // Original split classes (backward compat)
+  // Task-specific classes
   MLPClassifier, MLPRegressor,
   TabMClassifier, TabMRegressor,
   NAMClassifier, NAMRegressor

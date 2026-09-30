@@ -1,6 +1,6 @@
 {
   "name": "@wlearn/nn",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Neural tabular models (MLP, TabM, NAM) for wlearn via polygrad",
   "type": "commonjs",
   "main": "src/index.js",
@@ -14,18 +14,18 @@
     "src/",
     "LICENSE",
     "NOTICE",
-    "README.md",
-    "CHANGELOG.md"
+    "README.md"
   ],
   "sideEffects": false,
   "scripts": {
-    "test": "node test/test.js && node test/test_nam.js && node test/test_tabm.js && node test/test_cross_lang.js"
+    "test": "node test/test.js && node test/test_nam.js && node test/test_tabm.js && node test/test_cross_lang.js",
+    "test:migration": "node test/test_migration.js"
   },
   "dependencies": {
-    "@wlearn/core": "0.2.0"
+    "@wlearn/core": "^0.3.0"
   },
   "peerDependencies": {
-    "polygrad": ">=0.3.0"
+    "polygrad": "0.6.0"
   },
   "peerDependenciesMeta": {
     "polygrad": {

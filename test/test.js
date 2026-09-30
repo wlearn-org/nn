@@ -23,7 +23,7 @@ function assert(condition, msg) {
 
 function assertClose(a, b, tol = 1e-5, msg) {
   const diff = Math.abs(a - b)
-  if (diff > tol) throw new Error(msg || `expected ${a} ~ ${b} (diff=${diff}, tol=${tol})`)
+  if (!Number.isFinite(diff) || diff > tol) throw new Error(msg || `expected ${a} ~ ${b} (diff=${diff}, tol=${tol})`)
 }
 
 // ── Test Data Generators ───────────────────────────────────────────
@@ -168,7 +168,7 @@ await test('save/load roundtrip', async () => {
 
   // Decode and check manifest
   const { manifest } = decodeBundle(bundleBytes)
-  assert(manifest.typeId === 'wlearn.nn.mlp.classifier@1', `typeId = ${manifest.typeId}`)
+  assert(manifest.typeId === 'wlearn.nn.mlp.classifier@2', `typeId = ${manifest.typeId}`)
 
   // Load and compare predictions
   const loaded = await MLPClassifier.load(bundleBytes)
@@ -378,7 +378,7 @@ await test('save/load roundtrip', async () => {
 
   const bundleBytes = model.save()
   const { manifest } = decodeBundle(bundleBytes)
-  assert(manifest.typeId === 'wlearn.nn.mlp.regressor@1', `typeId = ${manifest.typeId}`)
+  assert(manifest.typeId === 'wlearn.nn.mlp.regressor@2', `typeId = ${manifest.typeId}`)
 
   const loaded = await MLPRegressor.load(bundleBytes)
   assert(loaded.isFitted, 'loaded model should be fitted')
