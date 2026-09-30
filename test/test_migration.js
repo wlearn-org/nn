@@ -44,6 +44,22 @@ async function main() {
         } finally { model.dispose() }
       }
     }
+    // The public default must handle arbitrary dataset sizes without padding or
+    // dropping training rows. Keep explicit unsupported batch guards below.
+    for (const family of ['MLP', 'NAM', 'TabM']) {
+      for (const rows of [80, 96, 100, 150, 1000]) {
+        const input = Array.from({ length: rows }, (_, i) => [i / rows, i % 2])
+        const model = await nn[family + 'Classifier'].create({
+          polygrad: runtime, hidden_sizes: [3], n_ensemble: 2, epochs: 1
+        })
+        try {
+          model.fit(input, input.map(row => row[1]))
+          assert.equal(model.predict(input).length, rows)
+          assert(model.predictProba(input).every(Number.isFinite))
+        } finally { model.dispose() }
+      }
+    }
+    console.log('Default batching: 15 arbitrary-row-count classifier fits passed')
     const short = await nn.MLPRegressor.create({ polygrad: runtime, hidden_sizes: [2], epochs: 1, batch_size: 8 })
     try {
       short.fit(X.slice(0, 2), [1, 2])
