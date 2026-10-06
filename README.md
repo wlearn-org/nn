@@ -16,7 +16,7 @@ All unified classes accept `task: 'classification'` or `task: 'regression'` and 
 npm install @wlearn/nn
 ```
 
-Requires Polygrad **0.6.0**. npm installs this peer dependency automatically.
+Requires Polygrad **>=0.7.0**; tested with 0.7.0. npm installs this peer dependency automatically.
 A caller-owned runtime can be reused across fits:
 
 ```js
