@@ -1,6 +1,6 @@
 {
   "name": "@wlearn/nn",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Neural tabular models (MLP, TabM, NAM) for wlearn via polygrad",
   "type": "commonjs",
   "main": "src/index.js",

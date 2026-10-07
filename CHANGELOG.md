@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.2 (unreleased)
+
+- Clarify installation, runtime ownership and parameter defaults; make README
+  examples self-contained and report asynchronous failures.
+- Move development instructions out of the package README.
+
+## 0.3.1 — 2026-10-06
+
+- Require Polygrad >=0.7.0; qualify native, Wasm and Python interchange against 0.7.0.
+
+## 0.3.0 (local candidate)
+
+- Migrate MLP, TabM and NAM to Polygrad 0.6 Model in a shared estimator implementation.
+- Store versioned @2 Model bundles; reject legacy Instance artifacts explicitly.
+- Own or borrow runtime contexts explicitly, restore best validation state, and reject unsupported training remainders.
+- Align core dependency with 0.3 and add JS/Python/native/WASM migration checks.
+
+
 ## [0.2.0] - 2026-03-10
 
 ### Fixed
@@ -13,7 +31,7 @@
 
 - Unified model classes: `MLPModel`, `TabMModel`, `NAMModel` via `createModelClass`
 - Unified classes accept `task` parameter and auto-detect from labels
-- Original split classes (`MLPClassifier`, `MLPRegressor`, etc.) still exported for backward compatibility
+- Split classes (`MLPClassifier`, `MLPRegressor`, etc.) remain exported for explicit task-specific imports
 
 ## [0.1.0] - 2026-03-08
 
